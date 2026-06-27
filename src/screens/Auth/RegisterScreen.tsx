@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -7,8 +7,8 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
-} from 'react-native';
-import { useAuth } from '../../context/AuthContext';
+} from "react-native";
+import { useAuth } from "../../context/AuthContext";
 
 type FormType = {
   name: string;
@@ -21,16 +21,14 @@ type FormType = {
 const RegisterScreen = () => {
   const { register, loading } = useAuth();
 
-  // ✅ MAKE SURE THIS EXISTS
   const [form, setForm] = useState<FormType>({
-    name: '',
-    email: '',
-    mobile: '',
-    password: '',
-    role_id: '1',
+    name: "",
+    email: "",
+    mobile: "",
+    password: "",
+    role_id: "1",
   });
 
-  // ✅ FIXED (dynamic key update)
   const handleChange = (key: keyof FormType, value: string) => {
     setForm((prev) => ({
       ...prev,
@@ -41,9 +39,9 @@ const RegisterScreen = () => {
   const handleRegister = async () => {
     try {
       const res = await register(form);
-      Alert.alert('Success', res.message || 'Registered successfully');
+      Alert.alert("Success", res.message || "Registered successfully");
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Registration failed');
+      Alert.alert("Error", err.message || "Registration failed");
     }
   };
 
@@ -54,28 +52,28 @@ const RegisterScreen = () => {
       <TextInput
         placeholder="Name"
         style={styles.input}
-        onChangeText={(v) => handleChange('name', v)}
+        onChangeText={(v) => handleChange("name", v)}
       />
 
       <TextInput
         placeholder="Email"
         style={styles.input}
         keyboardType="email-address"
-        onChangeText={(v) => handleChange('email', v)}
+        onChangeText={(v) => handleChange("email", v)}
       />
 
       <TextInput
         placeholder="Mobile"
         style={styles.input}
         keyboardType="phone-pad"
-        onChangeText={(v) => handleChange('mobile', v)}
+        onChangeText={(v) => handleChange("mobile", v)}
       />
 
       <TextInput
         placeholder="Password"
         style={styles.input}
         secureTextEntry
-        onChangeText={(v) => handleChange('password', v)}
+        onChangeText={(v) => handleChange("password", v)}
       />
 
       <TouchableOpacity style={styles.button} onPress={handleRegister}>
@@ -94,30 +92,30 @@ export default RegisterScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
     padding: 20,
   },
   title: {
     fontSize: 24,
     marginBottom: 20,
-    fontWeight: 'bold',
-    textAlign: 'center',
+    fontWeight: "bold",
+    textAlign: "center",
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: "#ccc",
     padding: 10,
     marginBottom: 12,
     borderRadius: 8,
   },
   button: {
-    backgroundColor: '#007BFF',
+    backgroundColor: "#007BFF",
     padding: 14,
     borderRadius: 10,
-    alignItems: 'center',
+    alignItems: "center",
   },
   btnText: {
-    color: '#fff',
-    fontWeight: 'bold',
+    color: "#fff",
+    fontWeight: "bold",
   },
 });
