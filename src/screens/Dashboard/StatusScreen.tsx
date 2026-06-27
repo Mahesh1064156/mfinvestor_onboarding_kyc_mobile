@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -10,7 +10,10 @@ import {
   ActivityIndicator,
   Linking,
   Alert,
+  DimensionValue,
 } from 'react-native';
+import { useAuth } from '../../context/AuthContext';
+import { fetchKycStatusApi } from '../../services/kycService';
 
 // TODO: Configure React Navigation in the project. Once configured, you can type props with:
 // import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -40,99 +43,54 @@ interface ActivityItem {
 
 const StatusScreen: React.FC<StatusScreenProps> = ({ navigation }) => {
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [kycData, setKycData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Mock Timeline Data
-  const timelineData: TimelineStep[] = [
-    {
-      id: 1,
-      title: 'Registration Completed',
-      description: 'Your account was successfully created and verified.',
-      timestamp: '24 Jun 2026 • 10:45 AM',
-      status: 'completed',
-    },
-    {
-      id: 2,
-      title: 'PAN Verified',
-      description: 'Your Permanent Account Number has been successfully verified.',
-      timestamp: '24 Jun 2026 • 10:50 AM',
-      status: 'completed',
-    },
-    {
-      id: 3,
-      title: 'KYC Documents Uploaded',
-      description: 'Aadhaar Card Front and Back documents successfully uploaded.',
-      timestamp: '24 Jun 2026 • 11:00 AM',
-      status: 'completed',
-    },
-    {
-      id: 4,
-      title: 'Verification In Progress',
-      description: 'Our verification team is reviewing your documents.',
-      timestamp: '24 Jun 2026 • 11:05 AM',
-      status: 'in_progress',
-    },
-    {
-      id: 5,
-      title: 'Account Activated',
-      description: 'Your investment account will be ready to purchase mutual funds.',
-      timestamp: 'Pending Verification',
-      status: 'upcoming',
-    },
-  ];
+  const authContext = useAuth();
+  const userId = authContext?.userId || null;
 
-  // Mock Recent Activity Data
-  const recentActivities: ActivityItem[] = [
-    {
-      id: 1,
-      title: 'Verification Started',
-      description: 'Documents queued for verification review.',
-      time: '24 Jun 2026 • 11:05 AM',
-      icon: '⏳',
-    },
-    {
-      id: 2,
-      title: 'KYC Documents Uploaded',
-      description: 'Aadhaar documents added to your application profile.',
-      time: '24 Jun 2026 • 11:00 AM',
-      icon: '📤',
-    },
-    {
-      id: 3,
-      title: 'PAN Verified Successfully',
-      description: 'PAN validation checks completed.',
-      time: '24 Jun 2026 • 10:50 AM',
-      icon: '✓',
-    },
-    {
-      id: 4,
-      title: 'Registration Completed',
-      description: 'New investor account initialized.',
-      time: '24 Jun 2026 • 10:45 AM',
-      icon: '👤',
-    },
-  ];
+  const loadKycStatus = async (showLoadingSpinner = true) => {
+    if (showLoadingSpinner) setIsLoading(true);
+    try {
+      const activeUserId = userId || 1; // Fallback user ID for testing
+      const response = await fetchKycStatusApi(activeUserId);
+      if (response && response.kyc) {
+        setKycData(response.kyc);
+      }
+    } catch (error) {
+      console.log('Failed to fetch KYC status from backend:', error);
+      // Keep kycData null if not submitted yet or server error
+    } finally {
+      if (showLoadingSpinner) setIsLoading(false);
+    }
+  };
 
-  const handleRefresh = () => {
-    // TODO: Integrate actual API call here to fetch current KYC application status.
-    // Example:
-    // setIsRefreshing(true);
-    // try {
-    //   const updatedStatus = await fetchKycStatusApi();
-    //   // update states...
-    // } catch (err) {
-    //   Alert.alert("Error", "Could not refresh status");
-    // } finally {
-    //   setIsRefreshing(false);
-    // }
+  useEffect(() => {
+    loadKycStatus();
+  }, [userId]);
 
-    // Simulating refresh interaction locally
+  const handleRefresh = async () => {
     setIsRefreshing(true);
-    setTimeout(() => {
+    try {
+      const activeUserId = userId || 1;
+      const response = await fetchKycStatusApi(activeUserId);
+      if (response && response.kyc) {
+        setKycData(response.kyc);
+      }
+      Alert.alert(
+        'Status Updated',
+        'Successfully retrieved the latest status from the server.',
+        [{ text: 'OK' }]
+      );
+    } catch (err: any) {
+      console.error(err);
+      Alert.alert(
+        'Refresh Failed',
+        err.error || err.message || 'Could not fetch updates from server.'
+      );
+    } finally {
       setIsRefreshing(false);
-      Alert.alert('Status Updated', 'You are viewing the latest application status.', [
-        { text: 'OK' },
-      ]);
-    }, 1500);
+    }
   };
 
   const handleEmailSupport = () => {
@@ -146,6 +104,147 @@ const StatusScreen: React.FC<StatusScreenProps> = ({ navigation }) => {
       Alert.alert('Error', 'Unable to open dialer.');
     });
   };
+
+  // Determine Dynamic Progress and Badge Details
+  let progressWidth: DimensionValue = '25%';
+  let progressPercent = '25%';
+  let progressSubtext = 'Completed 1 of 4 steps';
+  let badgeLabel = 'Not Submitted';
+  let badgeBgColor = '#E2E8F0';
+  let badgeTextColor = '#475569';
+  let statusDescription =
+    'Your application has not been submitted yet. Please complete PAN verification and upload your KYC documents.';
+
+  if (kycData) {
+    const kycStatus = kycData.kyc_status; // SUBMITTED, VERIFIED, REJECTED
+    
+    if (kycStatus === 'VERIFIED') {
+      progressWidth = '100%';
+      progressPercent = '100%';
+      progressSubtext = 'Completed 4 of 4 steps';
+      badgeLabel = 'Activated';
+      badgeBgColor = '#DCFCE7';
+      badgeTextColor = '#16A34A';
+      statusDescription =
+        'Your documents have been verified and your account is fully activated. You are ready to start investing!';
+    } else if (kycStatus === 'SUBMITTED') {
+      progressWidth = '75%';
+      progressPercent = '75%';
+      progressSubtext = 'Completed 3 of 4 steps';
+      badgeLabel = 'Under Review';
+      badgeBgColor = '#FEF3C7';
+      badgeTextColor = '#D97706';
+      statusDescription =
+        'Your documents are currently being reviewed by our verification team. You will receive a notification once verification is complete.';
+    } else if (kycStatus === 'REJECTED') {
+      progressWidth = '50%';
+      progressPercent = '50%';
+      progressSubtext = 'Completed 2 of 4 steps (Rejected)';
+      badgeLabel = 'Rejected';
+      badgeBgColor = '#FEE2E2';
+      badgeTextColor = '#DC2626';
+      statusDescription =
+        'Your KYC verification has been rejected. Please review your document uploads and verify your PAN details again.';
+    }
+  }
+
+  // Dynamic Timeline Steps based on kycData
+  const hasSubmittedKyc = !!kycData;
+  const isKycVerified = kycData?.kyc_status === 'VERIFIED';
+  const isKycSubmitted = kycData?.kyc_status === 'SUBMITTED';
+  const isPanVerified = kycData?.pan_status === 'VERIFIED';
+  const isPanPending = kycData?.pan_status === 'PENDING';
+
+  const timelineData: TimelineStep[] = [
+    {
+      id: 1,
+      title: 'Registration Completed',
+      description: 'Your account was successfully created and verified.',
+      timestamp: '24 Jun 2026 • 10:45 AM',
+      status: 'completed',
+    },
+    {
+      id: 2,
+      title: 'PAN Verified',
+      description: isPanVerified
+        ? 'Your Permanent Account Number has been successfully verified.'
+        : isPanPending
+        ? 'PAN verification check is pending backend validation.'
+        : 'Your PAN details are pending verification.',
+      timestamp: isPanVerified ? '24 Jun 2026 • 10:50 AM' : isPanPending ? 'Checking...' : 'Pending',
+      status: isPanVerified ? 'completed' : isPanPending ? 'in_progress' : 'upcoming',
+    },
+    {
+      id: 3,
+      title: 'KYC Documents Uploaded',
+      description: hasSubmittedKyc
+        ? 'Aadhaar Card Front and Back documents successfully uploaded.'
+        : 'Aadhaar Card Front/Back and PAN uploads are required.',
+      timestamp: hasSubmittedKyc ? '24 Jun 2026 • 11:00 AM' : 'Pending',
+      status: hasSubmittedKyc ? 'completed' : 'upcoming',
+    },
+    {
+      id: 4,
+      title: 'Verification In Progress',
+      description: 'Our verification team is reviewing your documents.',
+      timestamp: isKycVerified ? 'Verified' : isKycSubmitted ? 'In Progress' : 'Pending',
+      status: isKycVerified ? 'completed' : isKycSubmitted ? 'in_progress' : 'upcoming',
+    },
+    {
+      id: 5,
+      title: 'Account Activated',
+      description: 'Your investment account will be ready to purchase mutual funds.',
+      timestamp: isKycVerified ? 'Activated' : 'Pending Verification',
+      status: isKycVerified ? 'completed' : 'upcoming',
+    },
+  ];
+
+  // Mock Recent Activity Data
+  const recentActivities: ActivityItem[] = [
+    {
+      id: 1,
+      title: hasSubmittedKyc ? 'Verification Started' : 'Onboarding Pending',
+      description: hasSubmittedKyc
+        ? 'Documents queued for verification review.'
+        : 'Please submit your PAN details to get started.',
+      time: hasSubmittedKyc ? '24 Jun 2026 • 11:05 AM' : 'Today',
+      icon: '⏳',
+    },
+    {
+      id: 2,
+      title: 'KYC Documents Uploaded',
+      description: hasSubmittedKyc
+        ? 'Aadhaar documents added to your application profile.'
+        : 'Aadhaar and PAN card documents not uploaded yet.',
+      time: hasSubmittedKyc ? '24 Jun 2026 • 11:00 AM' : 'Pending',
+      icon: '📤',
+    },
+    {
+      id: 3,
+      title: isPanVerified ? 'PAN Verified Successfully' : 'PAN Verification Initiated',
+      description: isPanVerified ? 'PAN validation checks completed.' : 'Verification pending submission.',
+      time: isPanVerified ? '24 Jun 2026 • 10:50 AM' : 'Pending',
+      icon: '✓',
+    },
+    {
+      id: 4,
+      title: 'Registration Completed',
+      description: 'New investor account initialized.',
+      time: '24 Jun 2026 • 10:45 AM',
+      icon: '👤',
+    },
+  ];
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#2563EB" />
+          <Text style={styles.loadingText}>Fetching current application status...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -173,26 +272,23 @@ const StatusScreen: React.FC<StatusScreenProps> = ({ navigation }) => {
         <View style={styles.card}>
           <View style={styles.progressHeader}>
             <Text style={styles.progressTitle}>Onboarding Progress</Text>
-            <Text style={styles.progressPercent}>75%</Text>
+            <Text style={styles.progressPercent}>{progressPercent}</Text>
           </View>
           <View style={styles.progressBarBg}>
-            <View style={styles.progressBarFill} />
+            <View style={[styles.progressBarFill, { width: progressWidth }]} />
           </View>
-          <Text style={styles.progressSubtext}>Completed 3 of 4 steps</Text>
+          <Text style={styles.progressSubtext}>{progressSubtext}</Text>
         </View>
 
         {/* Current Status Card */}
         <View style={styles.statusCard}>
           <View style={styles.statusCardHeader}>
             <Text style={styles.statusLabel}>Current Status</Text>
-            <View style={styles.badgeContainer}>
-              <Text style={styles.badgeText}>Under Review</Text>
+            <View style={[styles.badgeContainer, { backgroundColor: badgeBgColor }]}>
+              <Text style={[styles.badgeText, { color: badgeTextColor }]}>{badgeLabel}</Text>
             </View>
           </View>
-          <Text style={styles.statusDescription}>
-            Your documents are currently being reviewed by our verification team. You will receive
-            a notification once verification is complete.
-          </Text>
+          <Text style={styles.statusDescription}>{statusDescription}</Text>
         </View>
 
         {/* Estimated Processing Time Card */}
@@ -325,6 +421,18 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F8FAFC',
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+  },
+  loadingText: {
+    marginTop: 12,
+    color: '#64748B',
+    fontSize: 14,
+    fontWeight: '500',
+  },
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: 24,
@@ -405,7 +513,6 @@ const styles = StyleSheet.create({
   },
   progressBarFill: {
     height: '100%',
-    width: '75%', // 75% completion
     backgroundColor: '#2563EB',
     borderRadius: 4,
   },
@@ -420,12 +527,12 @@ const styles = StyleSheet.create({
     padding: 20,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#FEF3C7', // Soft warning border
+    borderColor: '#E2E8F0',
     // Soft shadow
-    shadowColor: '#F59E0B',
+    shadowColor: '#0F172A',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
     elevation: 2,
   },
   statusCardHeader: {
@@ -440,13 +547,11 @@ const styles = StyleSheet.create({
     color: '#1E293B',
   },
   badgeContainer: {
-    backgroundColor: '#FEF3C7',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
   },
   badgeText: {
-    color: '#D97706',
     fontSize: 12,
     fontWeight: '700',
   },

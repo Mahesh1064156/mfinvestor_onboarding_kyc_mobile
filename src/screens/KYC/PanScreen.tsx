@@ -10,7 +10,10 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
+import { useAuth } from '../../context/AuthContext';
+import { submitKycApi } from '../../services/kycService';
 
 // TODO: Configure React Navigation in the project. Once configured, you can type props with:
 // import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -28,6 +31,8 @@ const PanScreen: React.FC<PanScreenProps> = ({ navigation }) => {
   const [pan, setPan] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false); // For future API loading state
+  const authContext = useAuth();
+  const userId = authContext?.userId || null;
 
   const isValid = PAN_REGEX.test(pan);
 
@@ -45,23 +50,32 @@ const PanScreen: React.FC<PanScreenProps> = ({ navigation }) => {
   const handleContinue = async () => {
     if (!isValid) return;
 
-    // TODO: Integrate backend API call to verify PAN details.
-    // Example:
-    // setIsVerifying(true);
-    // try {
-    //   await verifyPanWithService(pan);
-    //   navigation?.navigate('UploadKycScreen');
-    // } catch (err) {
-    //   Alert.alert('Verification Failed', err.message);
-    // } finally {
-    //   setIsVerifying(false);
-    // }
+    setIsVerifying(true);
+    try {
+      const activeUserId = userId || 1; // Fallback for direct testing
+      await submitKycApi({
+        user_id: activeUserId,
+        pan_number: pan,
+      });
 
-    // Local validation passes, proceed to the next KYC step
-    if (navigation) {
-      navigation.navigate('UploadKycScreen');
-    } else {
-      console.warn('Navigation is not yet configured. Redirecting to UploadKycScreen (TODO)');
+      Alert.alert(
+        'PAN Verified',
+        'Your PAN details have been successfully submitted.',
+        [
+          {
+            text: 'OK',
+            onPress: () => navigation?.navigate('UploadKycScreen'),
+          },
+        ]
+      );
+    } catch (err: any) {
+      console.error(err);
+      Alert.alert(
+        'Submission Failed',
+        err.error || err.message || 'Something went wrong during PAN verification.'
+      );
+    } finally {
+      setIsVerifying(false);
     }
   };
 

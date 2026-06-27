@@ -1,11 +1,14 @@
 import React from 'react';
+import { NavigationContainer } from '@react-navigation/native';
 import { AuthProvider } from './src/context/AuthContext';
-import RegisterScreen from './src/screens/Auth/RegisterScreen'
+import AppNavigator from './src/navigation/AppNavigator';
 
 export default function App() {
   return (
-    <AuthProvider>
-      <RegisterScreen />
-    </AuthProvider>
+    <NavigationContainer>
+      <AuthProvider>
+        <AppNavigator />
+      </AuthProvider>
+    </NavigationContainer>
   );
 }

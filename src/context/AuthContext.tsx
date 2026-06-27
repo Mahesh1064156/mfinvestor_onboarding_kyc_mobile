@@ -4,17 +4,22 @@ import { registerUser, RegisterPayload } from '../services/authService';
 interface AuthContextType {
   loading: boolean;
   register: (data: RegisterPayload) => Promise<any>;
+  userId: number | null;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider = ({ children }: any) => {
   const [loading, setLoading] = useState(false);
+  const [userId, setUserId] = useState<number | null>(null);
 
   const register = async (data: RegisterPayload) => {
     setLoading(true);
     try {
       const response = await registerUser(data);
+      if (response && response.user_id) {
+        setUserId(response.user_id);
+      }
       return response;
     } catch (error) {
       throw error;
@@ -24,7 +29,7 @@ export const AuthProvider = ({ children }: any) => {
   };
 
   return (
-    <AuthContext.Provider value={{ loading, register }}>
+    <AuthContext.Provider value={{ loading, register, userId }}>
       {children}
     </AuthContext.Provider>
   );
