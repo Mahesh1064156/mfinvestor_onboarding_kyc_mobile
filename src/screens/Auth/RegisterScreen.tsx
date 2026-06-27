@@ -18,7 +18,7 @@ type FormType = {
   role_id: string;
 };
 
-const RegisterScreen = () => {
+const RegisterScreen = ({ navigation }: any) => {
   const { register, loading } = useAuth();
 
   const [form, setForm] = useState<FormType>({
@@ -37,11 +37,22 @@ const RegisterScreen = () => {
   };
 
   const handleRegister = async () => {
+    // Validate empty fields
+    if (!form.name.trim() || !form.email.trim() || !form.mobile.trim() || !form.password.trim()) {
+      Alert.alert('Validation Error', 'All fields, including Password, are required to register.');
+      return;
+    }
+
     try {
       const res = await register(form);
-      Alert.alert("Success", res.message || "Registered successfully");
+      Alert.alert('Success', res.message || 'Registered successfully', [
+        {
+          text: 'OK',
+          onPress: () => navigation?.navigate('PanScreen'),
+        },
+      ]);
     } catch (err: any) {
-      Alert.alert("Error", err.message || "Registration failed");
+      Alert.alert('Error', err.error || err.message || 'Registration failed');
     }
   };
 
