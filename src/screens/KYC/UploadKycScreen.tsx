@@ -10,6 +10,9 @@ import {
   Platform,
   ActivityIndicator,
 } from 'react-native';
+import { useAuth } from '../../context/AuthContext';
+import { uploadKycFileApi } from '../../services/kycService';
+import * as DocumentPicker from 'expo-document-picker';
 
 // TODO: Configure React Navigation in the project. Once configured, you can type props with:
 // import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -22,53 +25,36 @@ interface UploadKycScreenProps {
 }
 
 const UploadKycScreen: React.FC<UploadKycScreenProps> = ({ navigation }) => {
-  const [aadhaarFront, setAadhaarFront] = useState<string | null>(null);
-  const [aadhaarBack, setAadhaarBack] = useState<string | null>(null);
-  const [panCard, setPanCard] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false); // For future API spinner
+  const [aadhaarFront, setAadhaarFront] = useState<any>(null);
+  const [aadhaarBack, setAadhaarBack] = useState<any>(null);
+  const [panCard, setPanCard] = useState<any>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const authContext = useAuth();
+  const userId = authContext?.userId || null;
 
   const isFormValid = !!(aadhaarFront && aadhaarBack);
 
-  const simulateFilePicker = (docType: 'front' | 'back' | 'pan') => {
-    const docName =
-      docType === 'front'
-        ? 'Aadhaar Front'
-        : docType === 'back'
-        ? 'Aadhaar Back'
-        : 'PAN Card';
+  const pickDocument = async (docType: 'front' | 'back' | 'pan') => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['image/*', 'application/pdf'],
+        copyToCacheDirectory: true,
+      });
 
-    // TODO: Replace this placeholder with actual document picker implementation.
-    // E.g., using expo-document-picker or expo-image-picker:
-    // const result = await DocumentPicker.getDocumentAsync({ type: 'image/*' });
-    // if (!result.canceled) { setDoc(result.assets[0].name); }
-
-    Alert.alert(
-      'Upload Document',
-      `Would you like to simulate selecting a file for ${docName}?`,
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Select File',
-          onPress: () => {
-            const mockExt = Math.random() > 0.3 ? 'jpg' : 'png';
-            const mockName = `${docType === 'pan' ? 'pan' : 'aadhaar_' + docType}_img_${Math.floor(
-              1000 + Math.random() * 9000
-            )}.${mockExt}`;
-            
-            if (docType === 'front') {
-              setAadhaarFront(mockName);
-            } else if (docType === 'back') {
-              setAadhaarBack(mockName);
-            } else {
-              setPanCard(mockName);
-            }
-          },
-        },
-      ]
-    );
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        if (docType === 'front') {
+          setAadhaarFront(asset);
+        } else if (docType === 'back') {
+          setAadhaarBack(asset);
+        } else {
+          setPanCard(asset);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to pick document:', err);
+      Alert.alert('Error', 'Failed to select document.');
+    }
   };
 
   const handleClearFile = (docType: 'front' | 'back' | 'pan') => {
@@ -80,27 +66,43 @@ const UploadKycScreen: React.FC<UploadKycScreenProps> = ({ navigation }) => {
   const handleSubmit = async () => {
     if (!isFormValid) return;
 
-    // TODO: Integrate backend API call to upload document paths/blobs.
-    // Example:
-    // setIsSubmitting(true);
-    // try {
-    //   await uploadKycDocumentsApi({ aadhaarFront, aadhaarBack, panCard });
-    //   navigation?.navigate('StatusScreen');
-    // } catch (err) {
-    //   Alert.alert('Submission Failed', err.message);
-    // } finally {
-    //   setIsSubmitting(false);
-    // }
-
-    if (navigation) {
-      navigation.navigate('StatusScreen');
-    } else {
-      console.warn('Navigation is not yet configured. Redirecting to StatusScreen (TODO)');
+    setIsSubmitting(true);
+    try {
+      const activeUserId = userId || 1; // Fallback for direct testing
+      
+      // Upload Aadhaar Front
+      if (aadhaarFront) {
+        await uploadKycFileApi(activeUserId, 'AADHAAR_FRONT', aadhaarFront);
+      }
+      
+      // Upload Aadhaar Back
+      if (aadhaarBack) {
+        await uploadKycFileApi(activeUserId, 'AADHAAR_BACK', aadhaarBack);
+      }
+      
+      // Upload PAN Card (if selected)
+      if (panCard) {
+        await uploadKycFileApi(activeUserId, 'PAN_CARD', panCard);
+      }
+      
       Alert.alert(
         'KYC Submitted',
-        'Verification files processed locally. Navigation to StatusScreen is pending React Navigation configuration.',
-        [{ text: 'OK' }]
+        'Your documents have been uploaded successfully for verification.',
+        [
+          {
+            text: 'OK',
+            onPress: () => navigation?.navigate('StatusScreen'),
+          },
+        ]
       );
+    } catch (err: any) {
+      console.error(err);
+      Alert.alert(
+        'Submission Failed',
+        err.error || err.message || 'Something went wrong during document upload.'
+      );
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -181,7 +183,7 @@ const UploadKycScreen: React.FC<UploadKycScreenProps> = ({ navigation }) => {
                 </Text>
                 {aadhaarFront ? (
                   <View style={styles.statusRow}>
-                    <Text style={styles.statusTextSuccess}>✓ {aadhaarFront}</Text>
+                    <Text style={styles.statusTextSuccess}>✓ {aadhaarFront.name}</Text>
                     <TouchableOpacity onPress={() => handleClearFile('front')}>
                       <Text style={styles.clearBtnText}>Remove</Text>
                     </TouchableOpacity>
@@ -193,7 +195,7 @@ const UploadKycScreen: React.FC<UploadKycScreenProps> = ({ navigation }) => {
             </View>
             <TouchableOpacity
               style={[styles.selectBtn, aadhaarFront && styles.selectBtnActive]}
-              onPress={() => simulateFilePicker('front')}
+              onPress={() => pickDocument('front')}
               accessibilityRole="button"
             >
               <Text style={[styles.selectBtnText, aadhaarFront && styles.selectBtnTextActive]}>
@@ -214,7 +216,7 @@ const UploadKycScreen: React.FC<UploadKycScreenProps> = ({ navigation }) => {
                 </Text>
                 {aadhaarBack ? (
                   <View style={styles.statusRow}>
-                    <Text style={styles.statusTextSuccess}>✓ {aadhaarBack}</Text>
+                    <Text style={styles.statusTextSuccess}>✓ {aadhaarBack.name}</Text>
                     <TouchableOpacity onPress={() => handleClearFile('back')}>
                       <Text style={styles.clearBtnText}>Remove</Text>
                     </TouchableOpacity>
@@ -226,7 +228,7 @@ const UploadKycScreen: React.FC<UploadKycScreenProps> = ({ navigation }) => {
             </View>
             <TouchableOpacity
               style={[styles.selectBtn, aadhaarBack && styles.selectBtnActive]}
-              onPress={() => simulateFilePicker('back')}
+              onPress={() => pickDocument('back')}
               accessibilityRole="button"
             >
               <Text style={[styles.selectBtnText, aadhaarBack && styles.selectBtnTextActive]}>
@@ -248,7 +250,7 @@ const UploadKycScreen: React.FC<UploadKycScreenProps> = ({ navigation }) => {
                 </View>
                 {panCard ? (
                   <View style={styles.statusRow}>
-                    <Text style={styles.statusTextSuccess}>✓ {panCard}</Text>
+                    <Text style={styles.statusTextSuccess}>✓ {panCard.name}</Text>
                     <TouchableOpacity onPress={() => handleClearFile('pan')}>
                       <Text style={styles.clearBtnText}>Remove</Text>
                     </TouchableOpacity>
@@ -260,7 +262,7 @@ const UploadKycScreen: React.FC<UploadKycScreenProps> = ({ navigation }) => {
             </View>
             <TouchableOpacity
               style={[styles.selectBtn, panCard && styles.selectBtnActive]}
-              onPress={() => simulateFilePicker('pan')}
+              onPress={() => pickDocument('pan')}
               accessibilityRole="button"
             >
               <Text style={[styles.selectBtnText, panCard && styles.selectBtnTextActive]}>
