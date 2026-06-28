@@ -11,9 +11,6 @@ import {
   Alert,
 } from 'react-native';
 
-// TODO: Configure React Navigation in the project. Once configured, you can type props with:
-// import { NativeStackScreenProps } from '@react-navigation/native-stack';
-// or use the useNavigation hook.
 interface NotificationScreenProps {
   navigation?: {
     navigate: (screenName: string, params?: any) => void;
@@ -27,8 +24,6 @@ interface NotificationItem {
   description: string;
   time: string;
   icon: string;
-  badge?: string;
-  badgeType?: 'success' | 'warning' | 'info';
   isRead: boolean;
 }
 
@@ -36,21 +31,17 @@ const INITIAL_NOTIFICATIONS: NotificationItem[] = [
   {
     id: '1',
     title: 'Registration Successful',
-    description: 'Your investor account has been created successfully.',
+    description: 'Your investor account has been successfully created.',
     time: '24 Jun 2026 • 10:30 AM',
-    icon: '👤',
-    badge: 'Success',
-    badgeType: 'success',
+    icon: 'CHECK_CIRCLE',
     isRead: true,
   },
   {
     id: '2',
-    title: 'PAN Verification Completed',
+    title: 'PAN Verified',
     description: 'Your PAN details have been verified successfully.',
     time: '24 Jun 2026 • 11:15 AM',
-    icon: '✓',
-    badge: 'Completed',
-    badgeType: 'success',
+    icon: 'SHIELD_CHECK',
     isRead: true,
   },
   {
@@ -58,29 +49,23 @@ const INITIAL_NOTIFICATIONS: NotificationItem[] = [
     title: 'KYC Documents Uploaded',
     description: 'Your Aadhaar documents have been received for verification.',
     time: '24 Jun 2026 • 11:45 AM',
-    icon: '📤',
-    badge: 'Uploaded',
-    badgeType: 'info',
+    icon: 'DOCUMENT',
     isRead: true,
   },
   {
     id: '4',
     title: 'Verification In Progress',
-    description: 'Our verification officer is reviewing your submitted documents.',
-    time: '25 Jun 2026 • 09:15 AM',
-    icon: '⏳',
-    badge: 'In Progress',
-    badgeType: 'warning',
+    description: 'Your documents are currently being reviewed by our verification team.',
+    time: '25 Jun 2026 • 09:10 AM',
+    icon: 'CLOCK',
     isRead: false,
   },
   {
     id: '5',
     title: 'Application Approved',
-    description: 'Congratulations! Your onboarding has been completed successfully.',
+    description: 'Congratulations! Your onboarding has been completed successfully and your investor account is now active.',
     time: '26 Jun 2026 • 02:00 PM',
-    icon: '🎉',
-    badge: 'Approved',
-    badgeType: 'success',
+    icon: 'SUCCESS_BADGE',
     isRead: false,
   },
 ];
@@ -90,7 +75,7 @@ const NotificationScreen: React.FC<NotificationScreenProps> = ({ navigation }) =
   const [refreshing, setRefreshing] = useState(false);
 
   const handleRefresh = () => {
-    // TODO: Integrate actual API call here to fetch client notifications.
+    // TODO: Connect to backend API to fetch real investor notifications in the future.
     // Example:
     // setRefreshing(true);
     // try {
@@ -102,12 +87,11 @@ const NotificationScreen: React.FC<NotificationScreenProps> = ({ navigation }) =
     //   setRefreshing(false);
     // }
 
-    // Simulate network pull-to-refresh
     setRefreshing(true);
     setTimeout(() => {
       setRefreshing(false);
       setNotifications(INITIAL_NOTIFICATIONS);
-    }, 1500);
+    }, 1200);
   };
 
   const handleClearAll = () => {
@@ -131,21 +115,53 @@ const NotificationScreen: React.FC<NotificationScreenProps> = ({ navigation }) =
     );
   };
 
-  const renderBadge = (badge: string, type?: 'success' | 'warning' | 'info') => {
-    let badgeStyle = styles.badgeInfo;
-    let badgeTextStyle = styles.badgeTextInfo;
-
-    if (type === 'success') {
-      badgeStyle = styles.badgeSuccess;
-      badgeTextStyle = styles.badgeTextSuccess;
-    } else if (type === 'warning') {
-      badgeStyle = styles.badgeWarning;
-      badgeTextStyle = styles.badgeTextWarning;
+  const renderIcon = (icon: string) => {
+    switch (icon) {
+      case 'CHECK_CIRCLE':
+        return (
+          <View style={[styles.iconBg, { backgroundColor: '#DCFCE7', borderColor: '#BBF7D0' }]}>
+            <Text style={[styles.iconEmoji, { color: '#16A34A' }]}>✓</Text>
+          </View>
+        );
+      case 'SHIELD_CHECK':
+        return (
+          <View style={[styles.iconBg, { backgroundColor: '#DBEAFE', borderColor: '#BFDBFE' }]}>
+            <Text style={[styles.iconEmoji, { color: '#2563EB' }]}>🛡️</Text>
+          </View>
+        );
+      case 'DOCUMENT':
+        return (
+          <View style={[styles.iconBg, { backgroundColor: '#F1F5F9', borderColor: '#E2E8F0' }]}>
+            <Text style={[styles.iconEmoji, { color: '#475569' }]}>📄</Text>
+          </View>
+        );
+      case 'CLOCK':
+        return (
+          <View style={[styles.iconBg, { backgroundColor: '#FEF3C7', borderColor: '#FDE68A' }]}>
+            <Text style={[styles.iconEmoji, { color: '#D97706' }]}>⏳</Text>
+          </View>
+        );
+      case 'SUCCESS_BADGE':
+        return (
+          <View style={[styles.iconBg, { backgroundColor: '#D1FAE5', borderColor: '#A7F3D0' }]}>
+            <Text style={[styles.iconEmoji, { color: '#059669' }]}>🎉</Text>
+          </View>
+        );
+      default:
+        return (
+          <View style={[styles.iconBg, { backgroundColor: '#F8FAFC', borderColor: '#E2E8F0' }]}>
+            <Text style={styles.iconEmoji}>🔔</Text>
+          </View>
+        );
     }
+  };
 
+  const renderReadBadge = (isRead: boolean) => {
     return (
-      <View style={[styles.badge, badgeStyle]}>
-        <Text style={[styles.badgeText, badgeTextStyle]}>{badge}</Text>
+      <View style={[styles.readBadge, isRead ? styles.readBadgeRead : styles.readBadgeUnread]}>
+        <Text style={[styles.readBadgeText, isRead ? styles.readBadgeTextRead : styles.readBadgeTextUnread]}>
+          {isRead ? 'Read' : 'New'}
+        </Text>
       </View>
     );
   };
@@ -153,26 +169,32 @@ const NotificationScreen: React.FC<NotificationScreenProps> = ({ navigation }) =
   const renderItem = ({ item }: { item: NotificationItem }) => {
     return (
       <TouchableOpacity
-        style={[styles.notificationCard, !item.isRead && styles.unreadCard]}
+        style={[
+          styles.notificationCard,
+          !item.isRead && styles.unreadCard,
+        ]}
         onPress={() => handleToggleRead(item.id)}
-        activeOpacity={0.8}
+        activeOpacity={0.85}
         accessibilityRole="button"
       >
         <View style={styles.cardLayout}>
           {/* Status Icon */}
-          <View style={styles.iconContainer}>
-            <Text style={styles.statusIcon}>{item.icon}</Text>
-            {!item.isRead && <View style={styles.unreadIndicator} />}
-          </View>
+          {renderIcon(item.icon)}
 
           {/* Details */}
           <View style={styles.detailsContainer}>
             <View style={styles.cardHeaderRow}>
-              <Text style={styles.cardTitle}>{item.title}</Text>
-              {item.badge && renderBadge(item.badge, item.badgeType)}
+              <Text style={[styles.cardTitle, !item.isRead && styles.unreadTitleText]}>
+                {item.title}
+              </Text>
+              {!item.isRead && <View style={styles.blueDot} />}
             </View>
             <Text style={styles.cardDesc}>{item.description}</Text>
-            <Text style={styles.cardTime}>{item.time}</Text>
+            
+            <View style={styles.cardFooterRow}>
+              <Text style={styles.cardTime}>{item.time}</Text>
+              {renderReadBadge(item.isRead)}
+            </View>
           </View>
         </View>
       </TouchableOpacity>
@@ -195,6 +217,9 @@ const NotificationScreen: React.FC<NotificationScreenProps> = ({ navigation }) =
       </View>
     );
   };
+
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
+  const totalCount = notifications.length;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -220,6 +245,31 @@ const NotificationScreen: React.FC<NotificationScreenProps> = ({ navigation }) =
           Stay updated with your onboarding and KYC application progress.
         </Text>
       </View>
+
+      {/* Summary Card */}
+      {notifications.length > 0 && (
+        <View style={styles.summaryContainer}>
+          <View style={[styles.summaryCard, { borderColor: '#DBEAFE' }]}>
+            <View style={[styles.summaryIconBg, { backgroundColor: '#EFF6FF' }]}>
+              <Text style={{ fontSize: 14 }}>🔵</Text>
+            </View>
+            <View style={styles.summaryInfo}>
+              <Text style={styles.summaryLbl}>Unread Notifications</Text>
+              <Text style={styles.summaryVal}>{unreadCount}</Text>
+            </View>
+          </View>
+
+          <View style={[styles.summaryCard, { borderColor: '#E2E8F0' }]}>
+            <View style={[styles.summaryIconBg, { backgroundColor: '#F1F5F9' }]}>
+              <Text style={{ fontSize: 14 }}>📊</Text>
+            </View>
+            <View style={styles.summaryInfo}>
+              <Text style={styles.summaryLbl}>Total Notifications</Text>
+              <Text style={styles.summaryVal}>{totalCount}</Text>
+            </View>
+          </View>
+        </View>
+      )}
 
       {/* Notifications List / Empty State */}
       <FlatList
@@ -255,14 +305,13 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 24,
     paddingTop: Platform.OS === 'android' ? 32 : 16,
-    paddingBottom: 16,
-    backgroundColor: '#F8FAFC',
+    paddingBottom: 12,
   },
   headerTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   backButton: {
     width: 40,
@@ -273,7 +322,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    // Soft shadow
     shadowColor: '#0F172A',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -295,15 +343,58 @@ const styles = StyleSheet.create({
     color: '#EF4444',
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
+    fontSize: 26,
+    fontWeight: '800',
     color: '#1E293B',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   subtitle: {
-    fontSize: 15,
+    fontSize: 14,
     color: '#64748B',
-    lineHeight: 22,
+    lineHeight: 20,
+  },
+  summaryContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 24,
+    marginBottom: 16,
+  },
+  summaryCard: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 12,
+    borderWidth: 1,
+    marginHorizontal: 4,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.02,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  summaryIconBg: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  summaryInfo: {
+    flex: 1,
+  },
+  summaryLbl: {
+    fontSize: 10,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  summaryVal: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#1E293B',
+    marginTop: 2,
   },
   listContent: {
     paddingHorizontal: 24,
@@ -320,44 +411,32 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderWidth: 1,
     borderColor: '#F1F5F9',
-    // Soft shadow
     shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.03,
-    shadowRadius: 6,
+    shadowRadius: 5,
     elevation: 2,
   },
   unreadCard: {
-    borderLeftWidth: 4,
-    borderLeftColor: '#2563EB',
+    backgroundColor: '#EFF6FF',
+    borderColor: '#DBEAFE',
   },
   cardLayout: {
     flexDirection: 'row',
     alignItems: 'flex-start',
   },
-  iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F8FAFC',
+  iconBg: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1.5,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    marginRight: 14,
-    position: 'relative',
+    marginRight: 12,
   },
-  statusIcon: {
+  iconEmoji: {
     fontSize: 18,
-  },
-  unreadIndicator: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#2563EB',
+    fontWeight: 'bold',
   },
   detailsContainer: {
     flex: 1,
@@ -365,52 +444,61 @@ const styles = StyleSheet.create({
   cardHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     marginBottom: 4,
   },
   cardTitle: {
     fontSize: 15,
-    fontWeight: '700',
-    color: '#1E293B',
+    fontWeight: '600',
+    color: '#64748B',
     flex: 1,
-    marginRight: 8,
+  },
+  unreadTitleText: {
+    color: '#1E293B',
+    fontWeight: '800',
+  },
+  blueDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#2563EB',
+    marginLeft: 8,
   },
   cardDesc: {
     fontSize: 13,
-    color: '#64748B',
+    color: '#475569',
     lineHeight: 18,
-    marginBottom: 8,
+    marginBottom: 10,
+  },
+  cardFooterRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   cardTime: {
     fontSize: 11,
     color: '#94A3B8',
     fontWeight: '500',
   },
-  badge: {
+  readBadge: {
     paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
+    paddingVertical: 2.5,
+    borderRadius: 6,
   },
-  badgeText: {
-    fontSize: 10,
-    fontWeight: '700',
+  readBadgeRead: {
+    backgroundColor: '#F1F5F9',
   },
-  badgeSuccess: {
-    backgroundColor: '#DCFCE7',
-  },
-  badgeTextSuccess: {
-    color: '#16A34A',
-  },
-  badgeWarning: {
-    backgroundColor: '#FEF3C7',
-  },
-  badgeTextWarning: {
-    color: '#D97706',
-  },
-  badgeInfo: {
+  readBadgeUnread: {
     backgroundColor: '#DBEAFE',
   },
-  badgeTextInfo: {
+  readBadgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+  },
+  readBadgeTextRead: {
+    color: '#64748B',
+  },
+  readBadgeTextUnread: {
     color: '#2563EB',
   },
   emptyContainer: {
