@@ -60,3 +60,21 @@ export const uploadKycFileApi = async (userId: number, documentType: string, fil
     throw error.response?.data || { message: 'Failed to upload ' + documentType };
   }
 };
+
+export const fetchNotificationsApi = async (userId: number) => {
+  try {
+    const response = await axiosInstance.get(`/notifications/${userId}`);
+    return response.data;
+  } catch (error: any) {
+    throw error.response?.data || { message: 'Failed to fetch notifications' };
+  }
+};
+
+export const markNotificationReadApi = async (id: string) => {
+  try {
+    const response = await axiosInstance.post(`/notifications/${id}/read`);
+    return response.data;
+  } catch (error: any) {
+    throw error.response?.data || { message: 'Failed to update notification' };
+  }
+};

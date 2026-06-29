@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -9,7 +9,10 @@ import {
   RefreshControl,
   Platform,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
+import { useAuth } from '../../context/AuthContext';
+import { fetchNotificationsApi, markNotificationReadApi } from '../../services/kycService';
 
 interface NotificationScreenProps {
   navigation?: {
@@ -27,35 +30,36 @@ interface NotificationItem {
   isRead: boolean;
 }
 
-const INITIAL_NOTIFICATIONS: NotificationItem[] = [
+// Fallback Mock Data as specified
+const MOCK_NOTIFICATIONS: NotificationItem[] = [
   {
     id: '1',
     title: 'Registration Successful',
-    description: 'Your investor account has been successfully created.',
-    time: '24 Jun 2026 • 10:30 AM',
+    description: 'Your investor account has been created successfully.',
+    time: '24 Jun 2026 • 10:15 AM',
     icon: 'CHECK_CIRCLE',
     isRead: true,
   },
   {
     id: '2',
-    title: 'PAN Verified',
-    description: 'Your PAN details have been verified successfully.',
-    time: '24 Jun 2026 • 11:15 AM',
+    title: 'PAN Verification Completed',
+    description: 'Your PAN information has been verified successfully.',
+    time: '24 Jun 2026 • 11:30 AM',
     icon: 'SHIELD_CHECK',
     isRead: true,
   },
   {
     id: '3',
     title: 'KYC Documents Uploaded',
-    description: 'Your Aadhaar documents have been received for verification.',
-    time: '24 Jun 2026 • 11:45 AM',
+    description: 'Your KYC documents have been received successfully.',
+    time: '24 Jun 2026 • 12:00 PM',
     icon: 'DOCUMENT',
     isRead: true,
   },
   {
     id: '4',
     title: 'Verification In Progress',
-    description: 'Your documents are currently being reviewed by our verification team.',
+    description: 'Our verification officer is reviewing your submitted documents.',
     time: '25 Jun 2026 • 09:10 AM',
     icon: 'CLOCK',
     isRead: false,
@@ -63,7 +67,7 @@ const INITIAL_NOTIFICATIONS: NotificationItem[] = [
   {
     id: '5',
     title: 'Application Approved',
-    description: 'Congratulations! Your onboarding has been completed successfully and your investor account is now active.',
+    description: 'Congratulations! Your onboarding has been completed successfully. You may now proceed with future mutual fund onboarding activities when available.',
     time: '26 Jun 2026 • 02:00 PM',
     icon: 'SUCCESS_BADGE',
     isRead: false,
@@ -71,33 +75,47 @@ const INITIAL_NOTIFICATIONS: NotificationItem[] = [
 ];
 
 const NotificationScreen: React.FC<NotificationScreenProps> = ({ navigation }) => {
-  const [notifications, setNotifications] = useState<NotificationItem[]>(INITIAL_NOTIFICATIONS);
+  const { userId } = useAuth();
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const loadNotifications = async () => {
+    try {
+      if (userId) {
+        // Fetch real notifications from the database
+        const data = await fetchNotificationsApi(userId as any);
+        if (data && data.length > 0) {
+          setNotifications(data);
+        } else {
+          // Fallback to standard mock data if database has no notifications yet
+          setNotifications(MOCK_NOTIFICATIONS);
+        }
+      } else {
+        setNotifications(MOCK_NOTIFICATIONS);
+      }
+    } catch (error) {
+      console.warn('Failed to fetch notifications from DB, using mock fallback:', error);
+      setNotifications(MOCK_NOTIFICATIONS);
+    } finally {
+      setIsLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    loadNotifications();
+  }, [userId]);
 
   const handleRefresh = () => {
-    // TODO: Connect to backend API to fetch real investor notifications in the future.
-    // Example:
-    // setRefreshing(true);
-    // try {
-    //   const data = await fetchNotificationsApi();
-    //   setNotifications(data);
-    // } catch (err) {
-    //   Alert.alert("Error", "Could not fetch updates.");
-    // } finally {
-    //   setRefreshing(false);
-    // }
-
     setRefreshing(true);
-    setTimeout(() => {
-      setRefreshing(false);
-      setNotifications(INITIAL_NOTIFICATIONS);
-    }, 1200);
+    loadNotifications();
   };
 
   const handleClearAll = () => {
     Alert.alert(
       'Clear Notifications',
-      'Are you sure you want to clear all in-app notifications?',
+      'Are you sure you want to clear all notifications?',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -109,10 +127,19 @@ const NotificationScreen: React.FC<NotificationScreenProps> = ({ navigation }) =
     );
   };
 
-  const handleToggleRead = (id: string) => {
+  const handleToggleRead = async (id: string) => {
     setNotifications((prev) =>
       prev.map((item) => (item.id === id ? { ...item, isRead: true } : item))
     );
+
+    try {
+      // Mark read in DB if it is a real MongoDB ID
+      if (id.length > 2) {
+        await markNotificationReadApi(id);
+      }
+    } catch (err) {
+      console.warn('Failed to update read status in database:', err);
+    }
   };
 
   const renderIcon = (icon: string) => {
@@ -212,7 +239,7 @@ const NotificationScreen: React.FC<NotificationScreenProps> = ({ navigation }) =
           You'll receive updates here whenever your onboarding status changes.
         </Text>
         <TouchableOpacity style={styles.resetButton} onPress={handleRefresh}>
-          <Text style={styles.resetButtonText}>Reset Mock Data</Text>
+          <Text style={styles.resetButtonText}>Refresh Data</Text>
         </TouchableOpacity>
       </View>
     );
@@ -242,7 +269,7 @@ const NotificationScreen: React.FC<NotificationScreenProps> = ({ navigation }) =
         </View>
         <Text style={styles.title}>Notifications</Text>
         <Text style={styles.subtitle}>
-          Stay updated with your onboarding and KYC application progress.
+          View updates about your onboarding application.
         </Text>
       </View>
 
@@ -272,25 +299,56 @@ const NotificationScreen: React.FC<NotificationScreenProps> = ({ navigation }) =
       )}
 
       {/* Notifications List / Empty State */}
-      <FlatList
-        data={notifications}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        contentContainerStyle={[
-          styles.listContent,
-          notifications.length === 0 && styles.listEmptyStyle,
-        ]}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={renderEmptyState}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            tintColor="#2563EB"
-            colors={['#2563EB']}
-          />
-        }
-      />
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#2563EB" />
+        </View>
+      ) : (
+        <FlatList
+          data={notifications}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+          contentContainerStyle={[
+            styles.listContent,
+            notifications.length === 0 && styles.listEmptyStyle,
+          ]}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={renderEmptyState}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor="#2563EB"
+              colors={['#2563EB']}
+            />
+          }
+        />
+      )}
+
+      {/* Bottom Navigation Buttons */}
+      <View style={styles.bottomButtonsContainer}>
+        <TouchableOpacity
+          style={styles.primaryButton}
+          onPress={() => {
+            // TODO: Route to StatusScreen
+            navigation?.navigate('StatusScreen');
+          }}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.primaryButtonText}>Back to Application Status</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.secondaryButton}
+          onPress={() => {
+            // TODO: Route to LoginScreen
+            navigation?.navigate('Login');
+          }}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.secondaryButtonText}>Back to Login</Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 };
@@ -398,11 +456,16 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: 24,
-    paddingBottom: 32,
+    paddingBottom: 24,
   },
   listEmptyStyle: {
     flexGrow: 1,
     justifyContent: 'center',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   notificationCard: {
     backgroundColor: '#FFFFFF',
@@ -546,5 +609,37 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#2563EB',
+  },
+  bottomButtonsContainer: {
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  primaryButton: {
+    backgroundColor: '#2563EB',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  primaryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: 'bold',
+  },
+  secondaryButton: {
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  secondaryButtonText: {
+    color: '#475569',
+    fontSize: 15,
+    fontWeight: 'bold',
   },
 });
