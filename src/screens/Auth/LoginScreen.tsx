@@ -41,7 +41,7 @@ const LoginScreen = ({ navigation }: any) => {
       Alert.alert('Success', res.message || 'Logged in successfully', [
         {
           text: 'OK',
-          onPress: () => navigation?.navigate('PanScreen'),
+          onPress: () => navigation?.navigate('DashboardScreen'),
         },
       ]);
     } catch (err: any) {

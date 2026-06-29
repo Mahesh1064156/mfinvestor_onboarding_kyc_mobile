@@ -2,6 +2,7 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import LoginScreen from '../screens/Auth/LoginScreen';
 import RegisterScreen from '../screens/Auth/RegisterScreen';
+import DashboardScreen from '../screens/Dashboard/DashboardScreen';
 import PanScreen from '../screens/KYC/PanScreen';
 import UploadKycScreen from '../screens/KYC/UploadKycScreen';
 import StatusScreen from '../screens/Dashboard/StatusScreen';
@@ -10,6 +11,7 @@ import NotificationScreen from '../screens/Dashboard/NotificationScreen';
 export type RootStackParamList = {
   Login: undefined;
   Register: undefined;
+  DashboardScreen: undefined;
   PanScreen: undefined;
   UploadKycScreen: undefined;
   StatusScreen: undefined;
@@ -28,6 +30,7 @@ const AppNavigator = () => {
     >
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />
+      <Stack.Screen name="DashboardScreen" component={DashboardScreen} />
       <Stack.Screen name="PanScreen" component={PanScreen} />
       <Stack.Screen name="UploadKycScreen" component={UploadKycScreen} />
       <Stack.Screen name="StatusScreen" component={StatusScreen} />
