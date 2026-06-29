@@ -1,9 +1,10 @@
 import React, { createContext, useContext, useState } from 'react';
-import { registerUser, RegisterPayload } from '../services/authService';
+import { registerUser, RegisterPayload, loginUser, LoginPayload } from '../services/authService';
 
 interface AuthContextType {
   loading: boolean;
   register: (data: RegisterPayload) => Promise<any>;
+  login: (data: LoginPayload) => Promise<any>;
   userId: number | null;
 }
 
@@ -28,8 +29,23 @@ export const AuthProvider = ({ children }: any) => {
     }
   };
 
+  const login = async (data: LoginPayload) => {
+    setLoading(true);
+    try {
+      const response = await loginUser(data);
+      if (response && response.user_id) {
+        setUserId(response.user_id);
+      }
+      return response;
+    } catch (error) {
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ loading, register, userId }}>
+    <AuthContext.Provider value={{ loading, register, login, userId }}>
       {children}
     </AuthContext.Provider>
   );
