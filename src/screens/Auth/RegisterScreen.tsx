@@ -48,7 +48,7 @@ const RegisterScreen = ({ navigation }: any) => {
       Alert.alert('Success', res.message || 'Registered successfully', [
         {
           text: 'OK',
-          onPress: () => navigation?.navigate('PanScreen'),
+          onPress: () => navigation?.navigate('DashboardScreen'),
         },
       ]);
     } catch (err: any) {
