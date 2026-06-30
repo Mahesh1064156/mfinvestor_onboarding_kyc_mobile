@@ -9,7 +9,7 @@ export interface RegisterPayload {
 }
 
 export interface LoginPayload {
-  emailOrMobile: string;
+  email: string;
   password: string;
 }
 
@@ -24,7 +24,8 @@ export const registerUser = async (data: RegisterPayload) => {
 
 export const loginUser = async (data: LoginPayload) => {
   try {
-    const response = await axiosInstance.post('/admin/login', data);
+    const response = await axiosInstance.post('/auth/login', data);
+    console.log(response);
     return response.data;
   } catch (error: any) {
     throw error.response?.data || { message: 'Something went wrong' };

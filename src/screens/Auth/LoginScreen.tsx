@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   View,
   Text,
@@ -11,7 +12,7 @@ import {
 import { useAuth } from "../../context/AuthContext";
 
 type FormType = {
-  emailOrMobile: string;
+  email: string;
   password: string;
 };
 
@@ -19,7 +20,7 @@ const LoginScreen = ({ navigation }: any) => {
   const { login, loading } = useAuth();
 
   const [form, setForm] = useState<FormType>({
-    emailOrMobile: "",
+    email: "",
     password: "",
   });
 
@@ -31,21 +32,30 @@ const LoginScreen = ({ navigation }: any) => {
   };
 
   const handleLogin = async () => {
-    if (!form.emailOrMobile.trim() || !form.password.trim()) {
-      Alert.alert('Validation Error', 'Email/Mobile and Password are required to login.');
+    if (!form.email.trim() || !form.password.trim()) {
+      Alert.alert(
+        "Validation Error",
+        "Email/Mobile and Password are required to login.",
+      );
       return;
     }
 
     try {
       const res = await login(form);
-      Alert.alert('Success', res.message || 'Logged in successfully', [
+      const token = res.data.token;
+      const user = res.data.user;
+
+      await AsyncStorage.setItem("token", token);
+      await AsyncStorage.setItem("user", JSON.stringify(user));
+console.log(res);
+      Alert.alert("Success", res.message || "Logged in successfully", [
         {
-          text: 'OK',
-          onPress: () => navigation?.navigate('DashboardScreen'),
+          text: "OK",
+          onPress: () => navigation?.navigate("Dashboard/DashboardScreen"),
         },
       ]);
     } catch (err: any) {
-      Alert.alert('Error', err.error || err.message || 'Login failed');
+      Alert.alert("Error", err.error || err.message || "Login failed");
     }
   };
 
@@ -58,7 +68,7 @@ const LoginScreen = ({ navigation }: any) => {
         style={styles.input}
         keyboardType="email-address"
         autoCapitalize="none"
-        onChangeText={(v) => handleChange("emailOrMobile", v)}
+        onChangeText={(v) => handleChange("email", v)}
       />
 
       <TextInput
@@ -76,7 +86,10 @@ const LoginScreen = ({ navigation }: any) => {
         )}
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => navigation?.navigate('Register')} style={styles.linkContainer}>
+      <TouchableOpacity
+        onPress={() => navigation?.navigate("Register")}
+        style={styles.linkContainer}
+      >
         <Text style={styles.linkText}>Don't have an account? Register</Text>
       </TouchableOpacity>
     </View>
