@@ -39,26 +39,18 @@ const LoginScreen = ({ navigation }: any) => {
       );
       return;
     }
-
     try {
       const res = await login(form);
       const token = res.data.token;
       const user = res.data.user;
-
       await AsyncStorage.setItem("token", token);
       await AsyncStorage.setItem("user", JSON.stringify(user));
-console.log(res);
-      Alert.alert("Success", res.message || "Logged in successfully", [
-        {
-          text: "OK",
-          onPress: () => navigation?.navigate("Dashboard/DashboardScreen"),
-        },
-      ]);
+      Alert.alert("Success", res.message || "Logged in successfully");
+      navigation.navigate("DashboardScreen");
     } catch (err: any) {
       Alert.alert("Error", err.error || err.message || "Login failed");
     }
   };
-
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Login</Text>
